@@ -5,16 +5,44 @@
             <span class="logo-text">联想商店</span>
         </div>
     </div>
+    <div v-for="product in products" :key="product.id">
+      <h2>{{ product.name }}</h2>
+      <p>型号: {{ product.model }}</p>
+      <p>价格: {{ product.price }}</p>
+      <p>描述: {{ product.description }}</p>
+      <p>库存: {{ product.stock }}</p>
+      <img :src="product.image" alt="产品图片" class="product-image" />
+    </div>
 </template>
 //
 
 <script>
+    import { ref,onMounted} from 'vue';
+
     export default{
         name:'StoreHome',
         setup()
         {
-            //console.log(computed(()=> import.meta.env.BASE_URL+'/assets/logo.png'))
-            return {}
+            const products = ref([]);
+
+            const fetchData = async () => {
+            try {
+                const response = await fetch('http://ouc.it.srv.thinkpadstore.lighilit.top/product/');
+                if (!response.ok) {
+                    console.log(1)
+                throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                console.log("数据输入", data);
+                products.value = data;
+            } catch (e) {
+                console.error('Error fetching data:', e);
+            }
+            };
+            console.log(products.value)
+
+            onMounted(fetchData);
+            return {products}
         }
     }
 </script>
@@ -50,6 +78,12 @@
     font-size: 18px;
     font-weight: bold;
     color: #333;
+    }
+
+    .product-image {
+        width: 100px;
+        height: auto;
+        margin: 10px 0;
     }
 
     @media (max-width: 768px) {
