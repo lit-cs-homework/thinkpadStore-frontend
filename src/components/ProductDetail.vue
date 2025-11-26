@@ -1,18 +1,74 @@
+
 <template>
   <div class="product-page">
-    <AppHeader />
+    <header>
+      <AppHeader/>
+    </header>
     <main class="detail-content">
-      <!-- 这里先空页面，后续填充商品详情 -->
+      <div class="product-detail">
+        <div class="product-images">
+          <img :src="productImages[currentIndex]" class="image" alt="Product Image" @click="toggleImageZoom">
+          <div class="thumbnails">
+            <img 
+              v-for="(image, index) in productImages" 
+              :key="index" 
+              :src="image" 
+              class="thumbnail" 
+              :class="{ active: currentIndex === index }" 
+              @click="switchImage(index)"
+            />
+          </div>
+        </div>
+        <div class="product-info">
+          <div class="product-title">
+            <h2>{{ productName }}</h2>
+            <span class="product-count">数量: 1</span>
+          </div>
+          <div class="product-price">价格: ¥5699</div>
+          <el-button type="primary" class="buy-button" @click="addToCart">立即购买</el-button>
+        </div>
+      </div>
+      <div v-if="isZoomed" class="zoom-overlay" @click="toggleImageZoom">
+        <img :src="productImages[currentIndex]" class="zoomed-image" alt="Zoomed Product Image">
+      </div>
     </main>
   </div>
 </template>
 
 <script>
 import AppHeader from './AppHeader.vue'
+import logo from '@/assets/logo.png'
+import logo1 from '@/assets/ouc.png'
 
 export default {
   name: 'ProductDetail',
-  components: { AppHeader }
+  components: { AppHeader },
+  data() {
+    return {
+      productName: 'ThinkPad T14p 2023',
+      productImages: [
+        logo,
+        logo1,
+        logo,
+        logo,
+        logo,
+      ],
+      currentIndex: 0,
+      isZoomed: false
+    }
+  },
+  methods: {
+    switchImage(index) {
+      this.currentIndex = index;
+      this.isZoomed = false; // Ensure zoom is off when switching images
+    },
+    toggleImageZoom() {
+      this.isZoomed = !this.isZoomed;
+    },
+    addToCart() {
+      alert('商品已添加到购物车');
+    }
+  }
 }
 </script>
 
@@ -23,7 +79,127 @@ export default {
   background: #fff;
 }
 .detail-content {
-  padding: 16px;
-  /* 目前为空，可后续添加详情布局 */
+  display: flex;
+  padding: 2%;
+}
+.product-detail {
+  display: flex;
+  width: 100%;
+}
+
+/*产品图片*/
+.product-images {
+  width: 25%; /* 控制产品图片的大小 */
+  padding-right: 2%; 
+  position: relative;
+  margin-left: 150px;
+}
+.image {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  cursor: pointer;
+  box-shadow: 0 0 10px #d6d5d5;
+  border: 2px solid #ababab; /* 添加边框 */
+  border-radius: 4px; /* 可选：添加圆角 */
+}
+
+/*缩略图容器*/
+.thumbnails {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  margin-top: 10px;
+  box-shadow: 0 0 10px #d6d5d5;
+  border: 2px solid #ababab; /* 可选：添加顶部边框 */
+  border-radius: 4px;
+}
+
+.thumbnail {
+  width: 15%; /* 可以根据需要调整 */
+  margin-right: 5px; /* 添加右边距 */
+  cursor: pointer;
+  border: 2px solid transparent;
+  border-radius: 4px; /* 可选：添加圆角 */
+  background-color: #f8f8f8f8; /* 可选：添加背景色 */
+}
+.thumbnail:last-child {
+  margin-right: 0; 
+}
+.thumbnail.active {
+  border-color: #409EFF;
+}
+
+.product-info {
+  width: 50%;
+  padding-left: 20px; /* 添加左边距 */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* 使按钮靠下对齐 */
+}
+
+.product-title {
+  display: flex;
+  align-items: center;
+  font-size: 24px;
+  margin-bottom: 5px; /* 减少上下间距 */
+}
+.product-count {
+  font-size: 14px;
+  color: #666;
+  margin-left: 10px; /* 添加左边距 */
+}
+
+.product-price {
+  display: flex;
+  font-size: 20px;
+  color: #333;
+  margin-bottom: 10px; /* 减少上下间距 */
+}
+
+.buy-button {
+  background-color: #409EFF;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  align-self: flex-start; /* 确保按钮靠右对齐 */
+}
+
+/*点击图片后，图片放大并移动到屏幕中央 */
+.zoom-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+.zoomed-image {
+  width: 600px;/*控制显示图片的像素大小*/
+  height: 600px;
+  object-fit: contain;
+  cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  .detail-content {
+    flex-direction: column;
+  }
+  .product-images,
+  .product-info {
+    width: 100%;
+  }
+  .product-images {
+    padding-right: 0;
+  }
+  .thumbnails {
+    justify-content: center;
+  }
 }
 </style>
