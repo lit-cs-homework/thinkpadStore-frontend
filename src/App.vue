@@ -1,15 +1,10 @@
 <template>
-  <StoreHome/>
+  <router-view/>
 </template>
 
 <script>
-import StoreHome from './components/StoreHome.vue'
-
 export default {
-  name: 'App',
-  components: {
-    StoreHome
-  }
+  name: 'App'
 }
 </script>
 
