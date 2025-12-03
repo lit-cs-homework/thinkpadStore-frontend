@@ -57,6 +57,39 @@ export const productService = {
   }
 }
 
+// 购物车相关 API
+export const cartService = {
+  // 获取购物车列表
+  getAll() {
+    return apiClient.get('/cart/')
+  },
+
+  // 添加商品到购物车
+  create(CartItem) {
+    return apiClient.post('/cart/', CartItem)
+  },
+
+  // 获取单个购物车项
+  getById(id) {
+    return apiClient.get(`/cart/${id}/`)
+  },
+
+  // 更新购物车项（全量）
+  update(id, CartItem) {
+    return apiClient.put(`/cart/${id}/`, CartItem)
+  },
+
+  // 部分更新
+  partialUpdate(id, CartItem) {
+    return apiClient.patch(`/cart/${id}/`, CartItem)
+  },
+
+  // 删除购物车项
+  delete(id) {
+    return apiClient.delete(`/cart/${id}/`)
+  }
+}
+
 // 其他服务...
 // export const userService = { ... }
 // export const orderService = { ... }
