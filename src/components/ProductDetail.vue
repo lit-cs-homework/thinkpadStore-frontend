@@ -13,10 +13,8 @@
         <button @click="fetchProductDetail" class="retry-btn">重试</button>
       </div>
       
-      <!-- 商品详情（加载成功后显示） -->
       <div v-if="!loading && !error" class="product-detail">
         <div class="product-images">
-          <!-- 主图：1:1比例容器 -->
           <div class="image-container">
             <img 
               :src="productImages[currentIndex]" 
@@ -26,8 +24,8 @@
               @error="handleImageError(currentIndex)"
             >
           </div>
-          <div class="thumbnails">
-            <!-- 缩略图：1:1比例容器 -->
+          <div v-if="productImages.length > 0" class="thumbnails">
+
             <div v-for="(image, index) in productImages" :key="index" class="thumbnail-container">
               <img 
                 :src="image" 
@@ -46,8 +44,31 @@
             <span class="product-count">数量: {{ haveQuantity }}</span>
           </div>
           <div class="product-back">
-              <div class="product-price">价格: ¥{{ formatPrice(productPrice) }}</div>
+              <div class="product-price">
+              价格: ¥{{ formatPrice(Number(basePrice) + Number(selectedExtraPrice)) }}
+              <span v-if="selectedExtraPrice > 0" class="extra-price-note">
+                (基础¥{{ formatPrice(basePrice) }} + 额外¥{{ formatPrice(selectedExtraPrice) }})
+              </span>
+            </div>
           </div>
+
+          <!-- 新增：额外价格配置选择区域 -->
+          <div class="extra-price-config">
+            <h4>额外配置选择</h4>
+            <!-- 每行2个选项，动态分组 -->
+            <div class="config-row" v-for="(row, rowIndex) in extraPriceRows" :key="rowIndex">
+              <div 
+                class="config-option" 
+                v-for="(option, optIndex) in row" 
+                :key="optIndex"
+                @click="selectExtraPrice(option.price)"
+                :class="{ active: selectedExtraPrice === option.price }"
+              >
+                {{ option.label }} (¥{{ option.price }})
+              </div>
+            </div>
+          </div>
+
           <div class="quantity-control">
             <button @click="decreaseQuantity">-</button>
             <span>{{ quantity }}</span>
@@ -81,14 +102,16 @@ export default {
   data() {
     return {
       productName: 'ThinkPad T14p 2023', // 默认名称（API加载后会替换）
-      productPrice: 5699, // 默认价格（API加载后会替换）
-      productImages: [
-        logo,
-        logo,
-        logo,
-        logo,
-        logo,
-      ], // 默认图片（API加载后会替换）
+      basePrice: 5699, // 基础价格（原productPrice改为basePrice）
+      selectedExtraPrice: 0, // 选中的额外配置价格
+      // 额外配置选项（默认值：+10、+20、+40、+60，后续可从后端获取）
+      extraPrices: [
+        { label: "配置1", price: 10 },
+        { label: "配置2", price: 20 },
+        { label: "配置3", price: 40 },
+        { label: "配置4", price: 60 },
+      ],
+      productImages: [logo], // 初始仅保留一张默认图（动态变化）
       currentIndex: 0,
       isZoomed: false,
       haveQuantity : 0,
@@ -96,6 +119,16 @@ export default {
       loading: false, // 加载状态
       error: null, // 错误信息
       defaultImage: logo // 图片加载失败时的默认图
+    }
+  },
+  // 计算属性：将额外配置按每行2个分组
+  computed: {
+    extraPriceRows() {
+      const rows = [];
+      for (let i = 0; i < this.extraPrices.length; i += 2) {
+        rows.push(this.extraPrices.slice(i, i + 2));
+      }
+      return rows;
     }
   },
   mounted() {
@@ -112,9 +145,9 @@ export default {
     toggleImageZoom() {
       this.isZoomed = !this.isZoomed;
     },
-    // 增加数量
+    // 增加数量（上限改为4）
     increaseQuantity() {
-      if (this.quantity < 10) {
+      if (this.quantity < 4) {
         this.quantity++;
       }
     },
@@ -124,20 +157,22 @@ export default {
         this.quantity--;
       }
     },
+    // 选择额外配置价格
+    selectExtraPrice(price) {
+      this.selectedExtraPrice = price;
+    },
     // 添加到购物车
     addToCart() {
-      if(this.quantity > this.haveQuantity)
-      {
-          alert('商品存货不足，请重新确定数量');
-      } 
-      else
-      {
-        alert(`商品【${this.productName}】已添加到购物车，数量：${this.quantity}`);
+      if(this.quantity > this.haveQuantity) {
+        alert('商品存货不足，请重新确定数量');
+      } else {
+        const totalPrice = (Number(this.basePrice) + Number(this.selectedExtraPrice)) * this.quantity;
+        alert(`商品【${this.productName}】已添加到购物车，数量：${this.quantity}，总价：¥${this.formatPrice(totalPrice)}`);
       }
     },
     // 价格格式化（保留2位小数）
     formatPrice(price) {
-      return parseFloat(price).toFixed(2);
+      return Number(price).toFixed(2);
     },
     // 图片加载失败处理
     handleImageError(index) {
@@ -149,39 +184,36 @@ export default {
       this.error = null;
       
       try {
-        // 从路由获取商品ID，没有则使用默认ID=0
         const route = useRoute();
         const productId = route.params.id || 0;
-        
         const response = await productService.getById(productId);
-        
         const product = response || {};
         
-        this.haveQuantity = product.stock;
-        this.productName = product.name; // 商品名称
-        this.productPrice = product.price; // 商品价格
-        
-        if (Array.isArray(product.images) && product.images.length > 0) {
-          this.productImages = [...product.images];
-          while (this.productImages.length < 5) {
-            this.productImages.push(this.defaultImage);
-          }
-        } else if (product.image) {
-          this.productImages = [
-            product.image,
-            product.image,
-            product.image,
-            product.image,
-            product.image
-          ];
-        }
-        
+        this.haveQuantity = Number(product.stock) || 0; // 转数值
+        this.productName = product.name || '默认商品名称';
+        this.basePrice = Number(product.price) || 0; // 转数值（关键：确保是数字类型）
+
+        this.handleProductImages(product);
       } catch (err) {
         console.error('获取商品详情失败:', err);
         this.error = err.message || '加载商品详情失败，请稍后重试';
       } finally {
         this.loading = false;
       }
+    },
+    // 处理商品图片的逻辑抽离
+    handleProductImages(product) {
+      let images = [];
+      if (Array.isArray(product.images) && product.images.length > 0) {
+        images = product.images.filter(img => img && typeof img === 'string');
+      } 
+      else if (product.image) {
+        images = [product.image];
+      }
+      if (images.length === 0) {
+        images = [this.defaultImage];
+      }
+      this.productImages = images;
     }
   }
 }
@@ -202,8 +234,9 @@ export default {
   width: 100%;
 }
 
+/*主预览图*/
 .product-images {
-  width: 25%; /* 控制产品图片区域的宽度 */
+  width: 25%; 
   padding-right: 2%; 
   position: relative;
   margin-left: 150px;
@@ -221,11 +254,12 @@ export default {
 .image {
   width: 100%;
   height: 100%;
-  object-fit: cover; /* 裁剪多余部分，保持比例 */
+  object-fit: cover;
   cursor: pointer;
   display: block;
 }
 
+/*缩略图*/
 .thumbnails {
   display: flex;
   flex-wrap: nowrap;
@@ -236,27 +270,29 @@ export default {
   border-radius: 4px;
   padding: 8px;
   gap: 5px;
+  max-height: 80px; /* 限制容器高度，避免过高 */
+  /* 新增：移除默认滚动条样式（可选，优化视觉） */
+  scrollbar-width: thin; /* 火狐浏览器 */
 }
-
+.thumbnails::-webkit-scrollbar {
+  height: 4px; /* 横向滚动条高度 */
+}
+.thumbnails::-webkit-scrollbar-thumb {
+  background-color: #ccc;
+  border-radius: 2px;
+}
 .thumbnail-container {
-  width: 15%; /* 控制每个缩略图的宽度占比 */
-  aspect-ratio: 1/1; /* 1:1比例 */
+  width: 50px; /* 固定缩略图宽度（可根据需求调整） */
+  height: 50px; /* 固定高度（替代aspect-ratio，避免自适应导致的高度问题） */
   overflow: hidden;
   border-radius: 4px;
   background-color: #f8f8f8;
+  flex-shrink: 0;
 }
-
 .thumbnail {
   width: 100%;
   height: 100%;
-  object-fit: cover; /* 裁剪多余部分，保持比例 */
-  cursor: pointer;
-  border: 2px solid transparent;
-  display: block;
-}
-
-.thumbnail.active {
-  border-color: #409EFF;
+  object-fit: cover; /* 确保图片填满容器 */
 }
 
 .product-info {
@@ -285,13 +321,54 @@ export default {
   font-size: 20px;
   color: #333;
   margin-bottom: 10px; /* 减少上下间距 */
+  align-items: center;
 }
-
+/* 额外价格说明样式 */
+.extra-price-note {
+  font-size: 12px;
+  color: #666;
+  margin-left: 8px;
+  font-weight: normal;
+}
 .product-back{
   background-color: #f0f0f0;
   padding: 10px;
   border-radius: 4px;
   width: 70%;
+}
+
+/* 额外价格配置样式 */
+.extra-price-config {
+  margin: 15px 0;
+  padding: 10px;
+  background-color: #f8f8f8;
+  border-radius: 4px;
+  width: 70%;
+}
+.extra-price-config h4 {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+  color: #333;
+}
+.config-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.config-option {
+  flex: 1;
+  padding: 8px 12px;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.config-option.active {
+  background-color: #409EFF;
+  color: #fff;
+  border-color: #409EFF;
 }
 
 .quantity-control {
@@ -341,13 +418,12 @@ export default {
   z-index: 1000;
 }
 .zoomed-image {
-  width: 600px;/*控制显示图片的像素大小*/
+  width: 600px;
   height: 600px;
   object-fit: contain;
   cursor: pointer;
 }
 
-/* 加载状态样式 */
 .loading {
   text-align: center;
   padding: 100px;
@@ -356,7 +432,6 @@ export default {
   width: 100%;
 }
 
-/* 错误状态样式 */
 .error {
   text-align: center;
   padding: 100px;
@@ -400,8 +475,16 @@ export default {
     aspect-ratio: 1/1;
   }
   .thumbnail-container {
-    width: 20%; /* 移动端缩略图宽度占比调整 */
-    aspect-ratio: 1/1;
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+  }
+  /* 移动端配置选项适配 */
+  .extra-price-config {
+    width: 100%;
+  }
+  .product-back {
+    width: 100%;
   }
 }
 </style>
