@@ -3,7 +3,7 @@
     <router-view/>
 
     <!-- 全局购物车侧边栏 -->
-    <Cart
+    <ShoppingCart
       v-if="cartState.isVisible"
       :is-sidebar="true"
       @close="closeCartSidebar"
@@ -19,13 +19,13 @@
 </template>
 
 <script>
-import { provide, reactive } from 'vue'
-import Cart from './components/Cart.vue'
+import { provide, reactive, onMounted } from 'vue'
+import ShoppingCart from './components/ShoppingCart.vue'
 
 export default {
   name: 'App',
   components: {
-    Cart
+    ShoppingCart
   },
   setup() {
     // 购物车状态管理
@@ -33,6 +33,22 @@ export default {
       isVisible: false,
       items: []
     })
+
+    // 认证状态管理
+    const authState = reactive({
+      isAuthenticated: false,
+      token: null,
+      user: null
+    })
+
+    // 检查登录状态
+    const checkAuthStatus = () => {
+      const token = localStorage.getItem('auth_token')
+      if (token) {
+        authState.isAuthenticated = true
+        authState.token = token
+      }
+    }
 
     // 显示购物车侧边栏
     const showCartSidebar = () => {
@@ -44,13 +60,40 @@ export default {
       cartState.isVisible = false
     }
 
+    // 登录方法
+    const login = (token, refreshToken) => {
+      localStorage.setItem('auth_token', token)
+      localStorage.setItem('refresh_token', refreshToken)
+      authState.isAuthenticated = true
+      authState.token = token
+    }
+
+    // 登出方法
+    const logout = () => {
+      localStorage.removeItem('auth_token')
+      localStorage.removeItem('refresh_token')
+      authState.isAuthenticated = false
+      authState.token = null
+      authState.user = null
+    }
+
+    // 组件挂载时检查登录状态
+    onMounted(() => {
+      checkAuthStatus()
+    })
+
     // 提供给子组件的全局状态和方法
     provide('cartState', cartState)
     provide('showCartSidebar', showCartSidebar)
+    provide('authState', authState)
+    provide('login', login)
+    provide('logout', logout)
 
     return {
       cartState,
-      closeCartSidebar
+      authState,
+      closeCartSidebar,
+      logout
     }
   }
 }
