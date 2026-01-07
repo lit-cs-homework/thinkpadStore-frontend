@@ -30,7 +30,7 @@
 
       <!-- 购物车 -->
       <div class="ShoppingCart" @click="showCartSidebar">
-        <img alt="Shopping Cart" src="@/assets/logo.png" />
+        <img alt="Shopping Cart" src="@/assets/shopping-cart.svg" />
         <span>购物车</span>
         <!-- 购物车商品数量显示 -->
         <span v-if="cartItemCount > 0" class="cart-badge">
