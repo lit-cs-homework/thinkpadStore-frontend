@@ -1,4 +1,5 @@
 <template>
+  <!-- 模板部分无需修改，保持原有逻辑 -->
   <div class="product-page">
     <header>
       <AppHeader/>
@@ -19,7 +20,11 @@
       <div v-else-if="product" class="product-detail">
         <div class="product-images">
           <div class="image-container">
+            <div v-if="productImages.length === 0" class="no-image-placeholder">
+              <span>暂无商品图片</span>
+            </div>
             <img
+              v-else
               :src="productImages[currentIndex]"
               class="image"
               alt="Product Image"
@@ -27,7 +32,8 @@
               @error="handleImageError(currentIndex)"
             >
           </div>
-          <div v-if="productImages.length > 0" class="thumbnails">
+          
+          <div v-if="productImages.length > 1" class="thumbnails">
             <div v-for="(image, index) in productImages" :key="index" class="thumbnail-container">
               <img
                 :src="image"
@@ -46,7 +52,7 @@
             <span class="product-count">数量: {{ quantity }}</span>
           </div>
           
-          <!-- 新增：商品详细配置展示 -->
+          <!-- 商品详细配置展示 -->
           <div v-if="productModelConfig" class="product-model-config">
             <span class="config-label">详细配置：</span>
             <span class="config-value">{{ productModelConfig }}</span>
@@ -96,7 +102,7 @@
       </div>
 
       <!-- 图片放大显示 -->
-      <div v-if="isZoomed && !loading && !error" class="zoom-overlay" @click="toggleImageZoom">
+      <div v-if="isZoomed && !loading && !error && productImages.length > 0" class="zoom-overlay" @click="toggleImageZoom">
         <img
           :src="productImages[currentIndex]"
           class="zoomed-image"
@@ -112,8 +118,8 @@
 import { inject, ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import AppHeader from './AppHeader.vue'
-import logo from '@/assets/logo.png'
-import logo1 from '@/assets/ouc.png'
+// 兜底图片（无图片时使用）
+import fallbackImage from '@/assets/logo.png'
 import { productService, cartService } from '@/services/api'
 
 export default {
@@ -126,20 +132,20 @@ export default {
 
     // 响应式数据
     const product = ref(null)
-    const productImages = ref([logo, logo1, logo, logo, logo])
+    const productImages = ref([]) // 初始化为空数组，适配任意数量的图片
     const currentIndex = ref(0)
     const isZoomed = ref(false)
     const quantity = ref(1)
     const loading = ref(true)
     const error = ref(null)
     const selectedExtraPrice = ref(0)
-    // 新增：存储处理后的商品配置
     const productModelConfig = ref('')
-
-    // 🔥 修改1：移除写死的配置，改为空数组
     const extraPriceOptions = ref([])
 
-    // 计算属性：将额外配置选项按行分组（每行2个）（无需修改）
+    // 图片服务器基础URL（从你的日志中提取）
+    const IMAGE_BASE_URL = 'http://ouc.it.srv.thinkpadstore.lighilit.top/'
+
+    // 计算属性：将额外配置选项按行分组（每行2个）
     const extraPriceRows = computed(() => {
       const rows = []
       for (let i = 0; i < extraPriceOptions.value.length; i += 2) {
@@ -148,14 +154,26 @@ export default {
       return rows
     })
 
-    // 价格格式化函数
     const formatPrice = (price) => {
       return Number(price || 0).toFixed(2)
     }
 
-    // 图片错误处理
     const handleImageError = (index) => {
       console.warn(`图片加载失败，索引: ${index}`)
+      if (productImages.value[index]) {
+        productImages.value[index] = fallbackImage
+      }
+    }
+
+    // 辅助函数：拼接完整的图片URL
+    const getFullImageUrl = (imagePath) => {
+      if (!imagePath) return ''
+      // 如果已经是完整URL，直接返回
+      if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+        return imagePath
+      }
+      // 拼接基础URL和图片路径
+      return `${IMAGE_BASE_URL}${imagePath}`
     }
 
     const fetchProductDetail = async () => {
@@ -165,40 +183,43 @@ export default {
 
         const productId = route.params.id
         const productData = await productService.getById(productId)
-        console.log('后端返回的equipments:', productData)
+        console.log('后端返回的商品数据:', productData)
 
         product.value = productData
 
-        // 新增：处理商品配置信息
+        // 处理商品配置信息
         if (productData.model) {
-          // 将#替换为/，并去除首尾多余的分隔符
           productModelConfig.value = productData.model.replace(/#/g, '/').replace(/^\/|\/$/g, '')
-          console.log('处理后的商品配置:', productModelConfig.value)
         } else {
           productModelConfig.value = ''
         }
 
-        // 设置商品图片
-        if (productData.image) {
-          productImages.value = [productData.image, logo1, logo, logo, logo]
+        // 处理商品图片 - 核心修复点
+        if (productData.images && Array.isArray(productData.images)) {
+          // 过滤掉空值和无效图片地址，拼接完整URL
+          const validImages = productData.images
+            .filter(img => img && typeof img === 'string' && img.trim())
+            .map(img => getFullImageUrl(img)) // 拼接完整URL
+          productImages.value = validImages
+          console.log(`加载到 ${validImages.length} 张有效商品图片`, validImages)
+        } else if (productData.image) {
+          // 兼容单个图片字段，拼接完整URL
+          productImages.value = [getFullImageUrl(productData.image)]
+        } else {
+          // 无图片时置空
+          productImages.value = []
         }
 
-        // 核心：从后端 equiments 填充配件配置
-        if (productData.equipments && Array.isArray(productData.equipments)) 
-        {
+        // 处理配件配置
+        if (productData.equipments && Array.isArray(productData.equipments)) {
           extraPriceOptions.value = productData.equipments.map(item => ({
             label: item.name || '未知配件',
             price: Number(item.extra_price) || 0
           }))
-          // 兜底：空数组时补充基础配置
-          if (extraPriceOptions.value.length === 0)
-           {
+          if (extraPriceOptions.value.length === 0) {
             extraPriceOptions.value = [{ label: '基础配置', price: 0 }]
           }
-          console.log('映射后的配件配置：', extraPriceOptions.value) // 调试日志
-        } 
-        else {
-          // 后端无数据时的兜底配置
+        } else {
           extraPriceOptions.value = [
             { label: '基础配置', price: 0 },
             { label: '内存升级', price: 500 },
@@ -212,14 +233,15 @@ export default {
         console.error('获取商品详情失败:', err)
         error.value = '获取商品详情失败，请稍后重试'
 
-        // 异常时的模拟数据（补充 equiments）
+        // 异常时的模拟数据（模拟不同数量的图片）
         product.value = {
           id: route.params.id || 1,
           name: 'ThinkPad T14p 2023',
           price: 5699,
           description: '高性能商务笔记本',
-          // 新增：模拟model字段
           model: 'i7-13700H#32GB内存#1TB SSD#RTX4060#2.5K屏',
+          // 模拟随机数量的图片（演示用）
+          images: [fallbackImage, fallbackImage], 
           equiments: [
             { name: '基础配置', price: 0 },
             { name: '内存升级', price: 500 },
@@ -228,10 +250,8 @@ export default {
             { name: '配件套装', price: 200 }
           ]
         }
-        // 处理模拟数据的配置信息
         productModelConfig.value = product.value.model.replace(/#/g, '/').replace(/^\/|\/$/g, '')
-        
-        // 异常时也填充配件配置
+        productImages.value = product.value.images
         extraPriceOptions.value = product.value.equipments.map(item => ({
           label: item.name,
           price: item.extra_price
@@ -241,13 +261,17 @@ export default {
       }
     }
 
-    // 其他方法无需修改
     const switchImage = (index) => {
-      currentIndex.value = index
-      isZoomed.value = false
+      // 确保索引在有效范围内
+      if (index >= 0 && index < productImages.value.length) {
+        currentIndex.value = index
+        isZoomed.value = false
+      }
     }
 
     const toggleImageZoom = () => {
+      // 无图片时不执行放大操作
+      if (productImages.value.length === 0) return
       isZoomed.value = !isZoomed.value
     }
 
@@ -274,53 +298,41 @@ export default {
       }
 
       try {
-        // 计算总价（基础价格 + 额外配置价格）
         const totalPrice = Number(product.value.price || 0) + Number(selectedExtraPrice.value)
-
-        // 根据API文档构造购物车数据
         const cartItemData = {
-          product: product.value.id,  // 商品ID（必填字段）
-          quantity: quantity.value,   // 商品数量
-          extra_price: selectedExtraPrice.value, // 额外配置价格
-          total_price: (totalPrice * quantity.value).toFixed(2) // 总价
+          product: product.value.id,
+          quantity: quantity.value,
+          extra_price: selectedExtraPrice.value,
+          total_price: (totalPrice * quantity.value).toFixed(2)
         }
 
-        // 调用API添加到购物车
         const createdItem = await cartService.create(cartItemData)
-
-        // 根据API响应构造本地显示数据
         const localProductData = {
-          id: createdItem.id, // 使用后端返回的真实ID
+          id: createdItem.id,
           name: product.value.name || 'Unknown Product',
           price: product.value.price || 0,
-          quantity: createdItem.quantity, // 使用后端返回的数量（可能已合并）
-          image: productImages.value[0],
-          product: product.value.id, // 保存商品ID
+          quantity: createdItem.quantity,
+          // 🔥 优化6：购物车图片适配，无图片时用兜底图
+          image: productImages.value[0] || fallbackImage,
+          product: product.value.id,
           extra_price: selectedExtraPrice.value,
           total_price: createdItem.total_price || (totalPrice * quantity.value).toFixed(2)
         }
 
-        // 检查购物车中是否已存在该商品，如果存在则更新，否则添加
         const existingItemIndex = cartState.items.findIndex(item => item.product === product.value.id)
         if (existingItemIndex !== -1) {
-          // 更新现有商品
           cartState.items[existingItemIndex] = localProductData
         } else {
-          // 添加新商品
           cartState.items.push(localProductData)
         }
 
-        // 显示购物车侧边栏
         showCartSidebar()
-
-        // 重置数量和配置
         quantity.value = 1
         selectedExtraPrice.value = 0
 
         alert(`商品已添加到购物车，数量：${localProductData.quantity}，总价：¥${localProductData.total_price}`)
       } catch (error) {
         console.error('添加到购物车失败:', error)
-        // 如果是认证错误，提示用户登录
         if (error.response?.status === 401) {
           alert('请先登录后再添加商品到购物车')
         } else if (error.response?.status === 400) {
@@ -331,12 +343,10 @@ export default {
       }
     }
 
-    // 立即购买功能（暂时空实现）
     const buyNow = () => {
       alert('立即购买功能开发中...')
     }
 
-    // 组件挂载时获取商品数据
     onMounted(() => {
       fetchProductDetail()
     })
@@ -353,7 +363,7 @@ export default {
       extraPriceRows,
       showCartSidebar,
       cartState,
-      productModelConfig, // 新增：返回处理后的配置数据
+      productModelConfig,
       switchImage,
       toggleImageZoom,
       increaseQuantity,
@@ -371,7 +381,7 @@ export default {
 
 <style scoped>
 .product-page {
-  padding-top: 60px; /* 抵消固定头部 */
+  padding-top: 60px;
   min-height: 100vh;
   background: #fff;
 }
@@ -401,6 +411,11 @@ export default {
   box-shadow: 0 0 10px #d6d5d5;
   border: 2px solid #ababab;
   border-radius: 4px;
+  /* 🔥 优化7：无图片时容器也能正常显示 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f8f8f8;
 }
 
 .image {
@@ -409,6 +424,18 @@ export default {
   object-fit: cover;
   cursor: pointer;
   display: block;
+}
+
+/* 🔥 新增：无图片占位样式 */
+.no-image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 14px;
+  text-align: center;
 }
 
 /*缩略图*/
@@ -422,12 +449,12 @@ export default {
   border-radius: 4px;
   padding: 8px;
   gap: 5px;
-  max-height: 80px; /* 限制容器高度，避免过高 */
-  scrollbar-width: thin; /* 火狐浏览器 */
+  max-height: 80px;
+  scrollbar-width: thin;
 }
 
 .thumbnails::-webkit-scrollbar {
-  height: 4px; /* 横向滚动条高度 */
+  height: 4px;
 }
 
 .thumbnails::-webkit-scrollbar-thumb {
@@ -436,8 +463,8 @@ export default {
 }
 
 .thumbnail-container {
-  width: 50px; /* 固定缩略图宽度（可根据需求调整） */
-  height: 50px; /* 固定高度（替代aspect-ratio，避免自适应导致的高度问题） */
+  width: 50px;
+  height: 50px;
   overflow: hidden;
   border-radius: 4px;
   background-color: #f8f8f8;
@@ -447,7 +474,7 @@ export default {
 .thumbnail {
   width: 100%;
   height: 100%;
-  object-fit: cover; /* 确保图片填满容器 */
+  object-fit: cover;
   cursor: pointer;
 }
 
@@ -457,7 +484,7 @@ export default {
 
 .product-info {
   width: 50%;
-  padding-left: 20px; /* 添加左边距 */
+  padding-left: 20px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -467,13 +494,13 @@ export default {
   display: flex;
   align-items: center;
   font-size: 24px;
-  margin-bottom: 5px; /* 减少上下间距 */
+  margin-bottom: 5px;
 }
 
 .product-count {
   font-size: 14px;
   color: #666;
-  margin-left: 10px; /* 添加左边距 */
+  margin-left: 10px;
 }
 
 .product-model-config {
@@ -485,21 +512,19 @@ export default {
   border-left: 3px solid #409EFF;
   border-radius: 2px;
   width: 70%;
-  text-align: left; /* 确保整体文本靠左 */
+  text-align: left;
 }
 
-/* 详细配置标签样式 */
 .config-label {
   font-weight: bold;
   color: #333;
   margin-right: 4px;
 }
 
-/* 详细配置值样式 */
 .config-value {
   display: inline-block;
   text-align: left;
-  word-wrap: break-word; /* 超长时自动换行 */
+  word-wrap: break-word;
 }
 
 .product-price {
@@ -507,11 +532,10 @@ export default {
   font-weight: bold;
   font-size: 20px;
   color: #333;
-  margin-bottom: 10px; /* 减少上下间距 */
+  margin-bottom: 10px;
   align-items: center;
 }
 
-/* 额外价格说明样式 */
 .extra-price-note {
   font-size: 12px;
   color: #666;
@@ -527,7 +551,6 @@ export default {
   width: 70%;
 }
 
-/* 额外价格配置样式 */
 .extra-price-config {
   margin: 15px 0;
   padding: 10px;
@@ -573,7 +596,7 @@ export default {
   display: flex;
   align-items: center;
   margin-bottom: 10px;
-  border: 2px solid #888; /* 添加黑边 */
+  border: 2px solid #888;
   box-shadow: 0 0 8px #d6d5d5;
   padding: 5px;
   border-radius: 4px;
@@ -600,23 +623,22 @@ export default {
 
 .action-buttons {
   display: flex;
-  gap: 15px; /* 按钮之间的间距 */
+  gap: 15px;
   margin-top: 20px;
-  width: 70%; /* 与价格区域完全对齐 */
+  width: 70%;
 }
 
-/* 按钮样式：均分宽度 + 缩小视觉宽度 */
 .add-to-cart-btn,.buy-now-btn {
   color: #fff;
   border: none;
-  padding: 12px 20px; /* 内边距控制按钮高度/视觉宽度 */
+  padding: 12px 20px;
   border-radius: 4px;
   cursor: pointer;
   font-size: 16px;
-  flex: 1; 
-  max-width: 200px; 
+  flex: 1;
+  max-width: 200px;
   min-width: 120px;
-  text-align: center; 
+  text-align: center;
   transition: all 0.3s ease;
 }
 
@@ -638,7 +660,6 @@ export default {
   transform: translateY(-2px);
 }
 
-/* 产品描述样式 */
 .product-description {
   color: #555;
   font-style: italic;
@@ -648,7 +669,6 @@ export default {
   text-align: left
 }
 
-/*点击图片后，图片放大并移动到屏幕中央 */
 .zoom-overlay {
   position: fixed;
   top: 0;
@@ -669,7 +689,6 @@ export default {
   cursor: pointer;
 }
 
-/* 加载和错误状态样式 */
 .loading-state, .error-state {
   display: flex;
   flex-direction: column;
@@ -724,7 +743,6 @@ export default {
     justify-content: flex-start;
   }
 
-  /* 移动端保持1:1比例 */
   .image-container {
     aspect-ratio: 1/1;
   }
@@ -733,14 +751,12 @@ export default {
     height: 40px;
     flex-shrink: 0;
   }
-  /* 移动端配置选项适配 */
   .extra-price-config {
     width: 100%;
   }
   .product-back {
     width: 100%;
   }
-  /* 移动端商品配置样式适配 */
   .product-model-config {
     width: 100%;
     text-align: left;
