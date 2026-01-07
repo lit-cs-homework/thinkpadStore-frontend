@@ -20,8 +20,11 @@
 
       <!-- 已登录 -->
       <template v-else>
-        <div class="ShoppingCart user">
+        <div class="ShoppingCart user" @click="goProfile" title="进入个人中心">
           <span>你好，{{ username }}</span>
+        </div>
+        <div class="ShoppingCart" @click="goProfile">
+          <span>个人中心</span>
         </div>
         <div class="ShoppingCart logout" @click="logout">
           <span>退出</span>
@@ -84,6 +87,10 @@ export default {
       router.push('/')
     }
 
+    const goProfile = () => {
+      router.push('/profile')
+    }
+
     // ===== 退出登录 =====
     const logout = () => {
       localStorage.removeItem('auth_token')
@@ -106,6 +113,7 @@ export default {
       goToLogin,
       goRegister,
       goHome,
+      goProfile,
       logout,
       showCartSidebar
     }

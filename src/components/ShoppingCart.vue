@@ -350,6 +350,11 @@ export default {
 
     // 组件挂载时加载购物车数据
     onMounted(() => {
+      // 如果当前是“页面模式”（/cart 路由），确保关闭全局侧边栏与遮罩层
+      if (!props.isSidebar && cartState && typeof cartState === 'object' && cartState.isVisible) {
+        cartState.isVisible = false
+      }
+
       // 如果已有全局状态数据，直接使用
       if (cartState.items && cartState.items.length > 0) {
         localCartItems.value = [...cartState.items]

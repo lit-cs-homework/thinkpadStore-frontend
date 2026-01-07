@@ -113,6 +113,12 @@ export const cartService = {
 }
 
 export const userService = {
+  getAll() {
+    return apiClient.get('/user/')
+  },
+  getById(id) {
+    return apiClient.get(`/user/${id}/`)
+  },
   register(data) {
     return apiClient.post('/user/', {
       username: data.username,

@@ -1,7 +1,6 @@
 <template>
   <div class="register-page">
     <header class="header">
-      <img src="/lenovo-logo.png" class="logo" />
     </header>
 
     <div class="content">
