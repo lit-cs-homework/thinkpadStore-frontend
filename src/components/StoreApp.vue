@@ -91,6 +91,9 @@ import AppHeader from "./AppHeader.vue";
 import { ref, onMounted, onUnmounted, computed } from "vue";
 import { productService } from "@/services/api";
 import logo from "@/assets/Lenovo.png";
+import hero1 from "@/assets/l1.jpg";
+import hero2 from "@/assets/l2.jpg";
+import hero3 from "@/assets/l3.jpg";
 import allDefault from "@/assets/icons/all-default.png";
 import desktopDefault from "@/assets/icons/desktop-default.png";
 import desktopActive from "@/assets/icons/desktop-active.png";
@@ -120,7 +123,12 @@ export default {
     // 响应式数据
     const products = ref([]);
     const allProducts = ref([]);
-    const heroImages = ref([]);
+    // 轮播图
+    const heroImages = ref([
+      { id: "hero-1", name: "轮播图 1", image: hero1 },
+      { id: "hero-2", name: "轮播图 2", image: hero2 },
+      { id: "hero-3", name: "轮播图 3", image: hero3 },
+    ]);
     const loading = ref(false);
     const error = ref(null);
     const currentIndex = ref(0);
@@ -189,8 +197,7 @@ export default {
           }
           return product;
         });
-        // 初始化轮播和分类
-        heroImages.value = allProducts.value.slice(0, 3).map(p => ({ id: p.id, name: p.name, image: p.image || defaultImage }));
+        // 初始化分类（轮播图已改为前端写死配置，不再依赖商品数据）
         switchCategory(currentCategory.value);
       } catch (err) {
         console.error("获取商品失败:", err);
