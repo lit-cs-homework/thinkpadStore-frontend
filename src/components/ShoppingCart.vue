@@ -31,7 +31,7 @@
 
       <!-- 购物车为空时的显示 -->
       <div v-else-if="!hasItems" class="empty-cart">
-        <img src="@/assets/logo.png" alt="空购物车" class="empty-cart-image" />
+        <img src="@/assets/shopping-cart.svg" alt="空购物车" class="empty-cart-image" />
         <p>您的购物车还是空的</p>
         <button class="continue-shopping-btn" @click="closeCartAndGoHome">
           继续购物
