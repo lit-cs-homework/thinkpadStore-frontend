@@ -1,8 +1,9 @@
 import axios from 'axios'
 import router from '@/router'
+import baseURL from './configure';
 
 const apiClient = axios.create({
-  baseURL: 'http://ouc.it.srv.thinkpadstore.lighilit.top/',
+  baseURL: baseURL,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json'
@@ -63,7 +64,7 @@ apiClient.interceptors.response.use(
 
     try {
       const res = await axios.post(
-        'http://ouc.it.srv.thinkpadstore.lighilit.top/login/token/refresh/',
+        `${baseURL}login/token/refresh/`,
         { refresh: refreshToken },
         { headers: { 'Content-Type': 'application/json' } }
       )

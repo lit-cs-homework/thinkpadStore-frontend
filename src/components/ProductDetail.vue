@@ -121,6 +121,7 @@ import AppHeader from './AppHeader.vue'
 // 兜底图片（无图片时使用）
 import fallbackImage from '@/assets/logo.png'
 import { productService, cartService } from '@/services/api'
+import baseUrl from '@/services/configure'
 
 export default {
   name: 'ProductDetail',
@@ -143,7 +144,7 @@ export default {
     const extraPriceOptions = ref([])
 
     // 图片服务器基础URL（从你的日志中提取）
-    const IMAGE_BASE_URL = 'http://ouc.it.srv.thinkpadstore.lighilit.top/'
+    const IMAGE_BASE_URL = baseUrl;
 
     // 计算属性：将额外配置选项按行分组（每行2个）
     const extraPriceRows = computed(() => {
